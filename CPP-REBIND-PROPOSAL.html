@@ -1,0 +1,230 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD><TITLE>A Proposal to Add a Generic Rebind Template to the Standard Library Technical Report</TITLE>
+<META http-equiv=Content-Type content="text/html; charset=utf-8">
+<style type = "text/css">
+.cpp-type {
+  color: green;
+}
+.keyword {
+  color: blue;
+}
+.comment {
+  color: gray;
+}
+</style>
+</HEAD>
+<BODY><FONT size=-1>Charles Salvia &lt;csalvia@bloomberg.net&gt; <BR>6 Dec 2017
+<BR>Doc number N0000=17-1205</FONT>
+
+<H1>A Proposal to Add a Generic Rebind Template to the Standard Library Technical Report</H1>
+
+<H2>I. Motivation</H2>
+
+<p>C++ meta-programming facilities often require rebinding (substituting) the template arguments of an existing instantiation of a class template with different types.  The earliest standardized incarnation of this facility was in <tt>std::allocator&lt;T&gt;::rebind</tt>, which enabled a container class to substitute the first parameter of an allocator class template with some arbitrary type.  More recently, the <tt>std::allocator_traits</tt> class template has employed both <tt>std::allocator_traits&lt;T&gt;::rebind_alloc</tt> and <tt>std::allocator_traits&lt;T&gt;::rebind_traits</tt> to provide similar flexibility.</p>
+<p>Often it is necessary to create arbitrary rebind templates for custom meta-programming facilities.  This proposal proposes the inclusion of a <i>generic</i> rebind alias template, <tt>std::rebind_t</tt>, to enable the convenient arbitrary substitution of template parameters.
+
+<h4>Trivial Example:</h4>
+
+Given:
+
+<blockquote>
+<pre>
+<span class='keyword'>using</span> vec_type = std::vector&lt;<span class='cpp-type'>double</span>, std::allocator&lt;<span class='cpp-type'>double</span>&gt;&gt;;
+</pre>
+</blockquote>
+
+We can rebind the vector type to a different template argument by doing:
+
+<blockquote>
+<pre>
+<span class='keyword'>using</span> new_vec_type = std::rebind_t&lt;vec_type, <span class='cpp-type'>std::string</span>&gt;;
+</pre>
+</blockquote>
+
+Which produces the type:
+
+<blockquote>
+<pre>
+std::vector&lt;<span class='cpp-type'>std::string</span>, std::allocator&lt;<span class='cpp-type'>std::string</span>&gt;&gt;;
+</pre>
+</blockquote>
+
+<h4>More Complex Example:</h4>
+
+The generic template <tt>std::rebind_t</tt> works with any arbitrary number of template arguments.  Arguments are rebound in positional left-to-right order, with omitted right-hand arguments automatically replaced with their original types. If an omitted right-hand argument has a default template argument that refers to a prior rebound argument to the left, all references to that argument are substituted with the new rebound argument.
+<br>
+<br>
+For example, given class template <tt>alloc</tt>, class template <tt>C</tt>, and classes <tt>X</tt>, <tt>Y</tt> and <tt>Z</tt>, defined as:
+<blockquote>
+<pre>
+<span class='keyword'>template</span> &lt;<span class='keyword'>class</span> T&gt;
+<span class='keyword'>struct</span> alloc {};
+
+<span class='keyword'>template</span> &lt;<span class='keyword'>class</span> A, <span class='keyword'>class</span> B, <span class='keyword'>class</span> C, <span class='keyword'>class</span> D = alloc&lt;A&gt, <span class='keyword'>class</span> E = alloc&lt;B&gt, <span class='keyword'>class</span> F = alloc&lt;C&gt&gt;
+<span class='keyword'>struct</span> C {};
+
+<span class='keyword'>struct</span> X {};
+<span class='keyword'>struct</span> Y {};
+<span class='keyword'>struct</span> Z {};
+</pre>
+</blockquote>
+
+Applying <tt>std::rebind_t</tt> produces the following type transformations:
+
+<blockquote>
+<table cellpadding = "2" border = "1">
+<tr>
+	<td><pre><b>Rebind expression</b></pre></td><td><pre><b>New type</b></pre></td>
+</tr>
+<tr>
+	<td valign="top">
+<pre>
+std::rebind_t&lt;C&lt;<span class='cpp-type'>long</span>, <span class='cpp-type'>float</span>, <span class='cpp-type'>double</span>&gt;, X&gt;
+<pre>
+	</td>
+	<td valign="top">
+<pre>
+C&lt;X, <span class='cpp-type'>float</span>, <span class='cpp-type'>double</span>, alloc&lt;X&gt;, alloc&lt;<span class='cpp-type'>float</span>&gt;, alloc&lt;<span class='cpp-type'>double</span>&gt;&gt;;
+</pre>
+	</td>
+</tr>
+<tr>
+	<td valign="top">
+<pre>
+std::rebind_t&lt;C&lt;<span class='cpp-type'>long</span>, <span class='cpp-type'>float</span>, <span class='cpp-type'>double</span>&gt;, X, Y&gt;
+<pre>
+	</td>
+	<td valign="top">
+<pre>
+C&lt;X, Y, <span class='cpp-type'>double</span>, alloc&lt;X&gt;, alloc&lt;Y&gt;, alloc&lt;<span class='cpp-type'>double</span>&gt;&gt;;
+</pre>
+	</td>
+</tr>
+<tr>
+	<td valign="top">
+<pre>
+std::rebind_t&lt;C&lt;<span class='cpp-type'>long</span>, <span class='cpp-type'>float</span>, <span class='cpp-type'>double</span>&gt;, X, Y, Z&gt;
+<pre>
+	</td>
+	<td valign="top">
+<pre>
+C&lt;X, Y, Z, alloc&lt;X&gt;, alloc&lt;Y&gt;, alloc&lt;Z&gt;&gt;;
+</pre>
+	</td>
+</tr>
+<tr>
+	<td valign="top">
+<pre>
+std::rebind_t&lt;C&lt;<span class='cpp-type'>long</span>, <span class='cpp-type'>float</span>, <span class='cpp-type'>double</span>&gt;, X, Y, Z, <span class='cpp-type'>std::string</span>&gt;
+<pre>
+	</td>
+	<td valign="top">
+<pre>
+C&lt;X, Y, Z, <span class='cpp-type'>std::string</span>, alloc&lt;Y&gt;, alloc&lt;Z&gt;&gt;;
+</pre>
+	</td>
+</tr>
+<tr>
+	<td valign="top">
+<pre>
+std::rebind_t&lt;C&lt;<span class='cpp-type'>long</span>, <span class='cpp-type'>float</span>, <span class='cpp-type'>double</span>&gt;, X, Y, Z, <span class='cpp-type'>std::string</span>, alloc&lt;<span class='cpp-type'>char</span>&gt;&gt;
+<pre>
+	</td>
+	<td valign="top">
+<pre>
+C&lt;X, Y, Z, <span class='cpp-type'>std::string</span>, alloc&lt;<span class='cpp-type'>char</span>&gt;, alloc&lt;Z&gt;&gt;;
+</pre>
+	</td>
+</tr>
+<tr>
+	<td valign="top">
+<pre>
+std::rebind_t&lt;C&lt;<span class='cpp-type'>long</span>, <span class='cpp-type'>float</span>, <span class='cpp-type'>double</span>&gt;, X, Y, Z, <span class='cpp-type'>std::string</span>, alloc&lt;<span class='cpp-type'>char</span>&gt;, <span class='cpp-type'>void</span>&gt;
+<pre>
+	</td>
+	<td valign="top">
+<pre>
+C&lt;X, Y, Z, <span class='cpp-type'>std::string</span>, alloc&lt;<span class='cpp-type'>char</span>&gt;, <span class='cpp-type'>void</span>&gt;;
+</pre>
+	</td>
+</tr>
+<tr>
+	<td valign="top">
+<pre>
+std::rebind_t&lt;C&lt;<span class='cpp-type'>long</span>, <span class='cpp-type'>float</span>, <span class='cpp-type'>double</span>&gt; &gt; <span class='comment'>/* zero arguments */</span>
+<pre>
+	</td>
+	<td valign="top">
+<pre>
+C&lt;<span class='cpp-type'>long</span>, <span class='cpp-type'>float</span>, <span class='cpp-type'>double</span>, alloc&lt;<span class='cpp-type'>long</span>&gt;, alloc&lt;<span class='cpp-type'>float</span>&gt;, alloc&lt;<span class='cpp-type'>double</span>&gt;&gt;;
+</pre>
+	</td>
+</tr>
+</table>
+</blockquote>
+
+<p>The generic <tt>std::rebind_t</tt> template could be used in place of <tt>std::allocator_traits::rebind_alloc</tt>, or in any other context where template parameters need to be rebound for a specific instantiation.</p>
+
+<blockquote>
+<pre>
+<span class='keyword'>template</span> &lt;<span class='keyword'>class</span> T, <span class='keyword'>class</span> Allocator = std::allocator&lt;T&gt;&gt;
+<span class='keyword'>class</span> LinkedList
+{
+  <span class='keyword'>struct</span> internal_node;
+
+  <span class='keyword'>using</span> internal_allocator_type = std::rebind_t&lt;Allocator, internal_node&gt;;
+
+  ...
+};
+</pre>
+</blockquote>
+
+<H2>II. Impact On the Standard</H2>
+
+<p>This proposal is a pure library extension. It does not require changes to any standard classes, functions or headers.  It has been implemented in standard C++14.</p>
+
+
+<H2>III. Implementation Considerations</H2>
+
+<p>The <tt>rebind_t</tt> alias template must take into account the number of default template arguments in a given class template <tt>C</tt>.  Therefore, it must be possible in standard C++ to programatically count the number of default template arguments in an arbitrary class template.  This can be accomplished using any method that exploits substitution failure, such as the use of <tt>std::void_t</tt>, to iteratively attempt to instantiate the class template with a decreasing number of template arguments, until substitution failure occurs.  At that point, the number of default template arguments can be inferred.</p>
+
+<H2>IV. Proposed Text</H2>
+<h3>Append to <tt>23.15.7.6</tt>  <tt>[meta.trans.other]</tt></h3>
+<blockquote><tt><pre>
+namespace std {
+
+  <span class = 'keyword'>template</span> &lt;<span class = 'keyword'>class</span> C, <span class = 'keyword'>class</span>... Params&gt;
+  <span class = 'keyword'>using</span> rebind_t = <span class='comment'>/* implementation defined */</span> ;
+
+  ...
+}
+</pre></tt></blockquote>
+
+<h3>Append to <tt>23.15.7.6</tt> <tt>[meta.trans.other] Table 50</tt>
+
+<blockquote>
+<table cellpadding = "2" border = "1">
+<tr>
+<td valign = "top">
+<pre>
+template &lt;class C, class</span>... T&gt;
+using rebind_t = <i>implementation-defined</i>;
+</pre>
+</td>
+<td valign = "top">
+If class <tt>C</tt> is not a class template instantiation or alias template, the program is ill-formed.  The expression <tt>rebind_t&lt;C, T...&gt;</tt> substitutes the template arguments of class <tt>C</tt> with the parameter pack <tt>T</tt> in left-to-right order.  If <tt>sizeof... T</tt> is less than the number of template parameters of <tt>C</tt>, then the omitted right-hand-side template parameters are replaced with the positionally-corresponding original types in class template <tt>C</tt>, or, if an omitted right-hand-side argument corresponds positionally to the <tt><i>i</i>th</tt> template parameter of <tt>C</tt> that has a default template argument, and the default template argument is an <i>id-expression</i> (8.1.4) that refers to a prior parameter of <tt>C</tt> that was replaced with a positionally corresponding argument <tt>T<sub>j</sub></tt> in the parameter pack <tt>T</tt>, then all references to the prior template parameter of <tt>C</tt> in the <i>id-expression</i> are substituted with the type <tt>T<sub>j</sub></tt>.  
+</td>
+</tr>
+</table>
+</blockquote>
+
+<H2>IV. Future Work</H2>
+
+<p>
+The alias template <tt>std::rebind_t</tt> is specified to substitute template arguments in left-to-right, positional order.  It may be desirable to replace the <i>i</i>th argument of a class template instantiation, while leaving some prior arguments as their original types without having to explicitly specify the original type.  This could be achieved by a special <i>placeholder</i> type, similar to the placeholder types used with <tt>std::bind</tt>.  Using the placeholder type with <tt>std::rebind_t&lt;C, T...&gt;</tt> would construct a new type where each template argument of class template <tt>C</tt> that corresponds positionally with the <i>placeholder expression</i> in the parameter pack <tt>T</tt> would remain as original the template argument in <tt>C</tt>.
+</p>
+<br>
+<br>
+<br>
+</BODY>
+</HTML>
