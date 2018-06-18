@@ -221,7 +221,7 @@ If class <tt>C</tt> is not a class template instantiation or alias template, the
 <H2>IV. Future Work</H2>
 
 <p>
-The alias template <tt>std::rebind_t</tt> is specified to substitute template arguments in left-to-right, positional order.  It may be desirable to replace the <i>i</i>th argument of a class template instantiation, while leaving some prior arguments as their original types without having to explicitly specify the original type.  This could be achieved by a special <i>placeholder</i> type, similar to the placeholder types used with <tt>std::bind</tt>.  Using the placeholder type with <tt>std::rebind_t&lt;C, T...&gt;</tt> would construct a new type where each template argument of class template <tt>C</tt> that corresponds positionally with the <i>placeholder expression</i> in the parameter pack <tt>T</tt> would remain as original the template argument in <tt>C</tt>.
+The alias template <tt>std::rebind_t</tt> is specified to substitute template arguments in left-to-right, positional order.  It may be desirable to replace the <i>i</i>th argument of a class template instantiation, while leaving some prior arguments as their original types without having to explicitly specify the original type.  This could be achieved by a special <i>placeholder</i> type, similar to the placeholder types used with <tt>std::bind</tt>.  Using the placeholder type with <tt>std::rebind_t&lt;C, T...&gt;</tt> would construct a new type where each template argument of class template <tt>C</tt> that corresponds positionally with the <i>placeholder expression</i> in the parameter pack <tt>T</tt> would remain as the original template parameter in <tt>C</tt>.
 </p>
 <br>
 <br>
